@@ -83,6 +83,7 @@ class TrafficShaper(QoSBase):
                 else:
                     rate = self._rate_convert(cls_config['bandwidth'])
 
+                cls_config['_tc_rate'] = rate
                 burst = cls_config['burst']
                 quantum = cls_config['codel_quantum']
 
@@ -93,6 +94,7 @@ class TrafficShaper(QoSBase):
 
                 if 'ceiling' in cls_config:
                     f_ceil = self._rate_convert(cls_config['ceiling'])
+                    cls_config['_tc_ceil'] = f_ceil
                     tmp += f' ceil {f_ceil}'
                 self._cmd(tmp)
 
@@ -105,6 +107,7 @@ class TrafficShaper(QoSBase):
                     rate = self._rate_convert(config['bandwidth']) * int(percent) // 100
                 else:
                     rate = self._rate_convert(config['default']['bandwidth'])
+                config['default']['_tc_rate'] = rate
                 burst = config['default']['burst']
                 quantum = config['default']['codel_quantum']
                 tmp = f'tc class replace dev {self._interface} parent {self._parent:x}:1 classid {self._parent:x}:{default_minor_id:x} htb rate {rate} burst {burst} quantum {quantum}'
@@ -117,6 +120,7 @@ class TrafficShaper(QoSBase):
                         f_ceil = self._rate_convert(config['bandwidth']) * int(percent) // 100
                     else:
                         f_ceil = self._rate_convert(config['default']['ceiling'])
+                    config['default']['_tc_ceil'] = f_ceil
                     tmp += f' ceil {f_ceil}'
                 self._cmd(tmp)
 
@@ -158,7 +162,7 @@ class TrafficShaperHFSC(QoSBase):
             if param:
                 tmp += (
                     f' {self.short_criterion[crit]}'
-                    f' m1 {self._rate_convert(param["m1"]) if param.get("m1") else 0}'
+                    f' m1 {self._rate_convert(param["m1"]) if param.get("m1") is not None else 0}'
                     f' d {param.get("d", 0)}ms'
                     f' m2 {self._rate_convert(param["m2"])}'
                 )
@@ -183,14 +187,37 @@ class TrafficShaperHFSC(QoSBase):
         # tmp = f'tc qdisc add dev {self._interface} parent {self._parent:x}:1 handle f1: sfq perturb 10'
         # self._cmd(tmp)
 
+        root_rate = speed
+
         if 'class' in config:
             for cls, cls_config in config['class'].items():
-                self._gen_class(cls=int(cls), cls_config=cls_config)
+                self._gen_class(cls=int(cls), cls_config=self._normalize_hfsc_rates(cls_config, root_rate))
 
         if 'default' in config:
             self._gen_class(
-                cls=int(default_cls_id), cls_config=config.get('default', {})
+                cls=int(default_cls_id),
+                cls_config=self._normalize_hfsc_rates(config.get('default', {}), root_rate),
             )
 
         # call base class
         super().update(config, direction)
+
+    def _normalize_hfsc_rates(self, cls_config: dict, root_rate: int) -> dict:
+        """Convert percent-based hfsc m1/m2 values to absolute based on shaper bandwidth."""
+        normalized = dict(cls_config)
+
+        for crit in self.criteria:
+            crit_cfg = normalized.get(crit)
+            if not crit_cfg:
+                continue
+
+            for key in ['m1', 'm2']:
+                val = crit_cfg.get(key)
+                if isinstance(val, str) and val.endswith('%'):
+                    try:
+                        percent = int(val.rstrip('%'))
+                        crit_cfg[key] = root_rate * percent // 100
+                    except ValueError:
+                        pass
+
+        return normalized

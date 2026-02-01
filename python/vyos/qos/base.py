@@ -187,6 +187,9 @@ class QoSBase:
             self._cmd(default_tc)
 
     def _rate_convert(self, rate) -> int:
+        if isinstance(rate, int):
+            return rate
+
         rates = {
             'bit'   : 1,
             'kbit'  : 1000,
@@ -378,7 +381,12 @@ class QoSBase:
                                 filter_cmd += f'/{action}'
 
                             if 'bandwidth' in cls_config:
-                                rate = self._rate_convert(cls_config['bandwidth'])
+                                bw_cfg = cls_config['bandwidth']
+                                if isinstance(bw_cfg, str) and bw_cfg.endswith('%'):
+                                    # Use the already calculated HTB rate when percent-based
+                                    rate = cls_config.get('_tc_rate', self._rate_convert(bw_cfg))
+                                else:
+                                    rate = self._rate_convert(bw_cfg)
                                 filter_cmd += f' rate {rate}'
 
                             if 'burst' in cls_config:
@@ -445,7 +453,11 @@ class QoSBase:
                         filter_cmd += f'/{action}'
 
                 if 'bandwidth' in config['default']:
-                    rate = self._rate_convert(config['default']['bandwidth'])
+                    bw_cfg = config['default']['bandwidth']
+                    if isinstance(bw_cfg, str) and bw_cfg.endswith('%'):
+                        rate = config['default'].get('_tc_rate', self._rate_convert(bw_cfg))
+                    else:
+                        rate = self._rate_convert(bw_cfg)
                     filter_cmd += f' rate {rate}'
 
                 if 'burst' in config['default']:

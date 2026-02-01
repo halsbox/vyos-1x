@@ -1324,6 +1324,44 @@ class TestQoS(VyOSUnitTestSHIM.TestCase):
                 self.assertIn(f'filter parent 1: protocol {proto} pref',
                               get_tc_filter_details(interface))
 
+    def test_25_shaper_policer_percent_bandwidth(self):
+        interface = self._interfaces[0]
+        shaper_name = f'qos-shaper-{interface}'
+
+        self.cli_set(base_path + ['interface', interface, 'egress', shaper_name])
+        self.cli_set(base_path + ['policy', 'shaper', shaper_name, 'bandwidth', '100mbit'])
+        self.cli_set(base_path + ['policy', 'shaper', shaper_name, 'class', '10', 'bandwidth', '50%'])
+        self.cli_set(base_path + ['policy', 'shaper', shaper_name, 'class', '10', 'match', 'MARK', 'mark', '10'])
+        self.cli_set(base_path + ['policy', 'shaper', shaper_name, 'default', 'bandwidth', '50%'])
+
+        self.cli_commit()
+
+        filter_output = get_tc_filter_details(interface)
+        self.assertIn('police', filter_output)
+        # 50% of 100mbit should translate to a 50Mbit police rate, not interface speed
+        self.assertIn('rate 50Mbit', filter_output)
+
+    def test_26_hfsc_percent_rates(self):
+        interface = self._interfaces[0]
+        policy_name = f'qos-hfsc-{interface}'
+
+        self.cli_set(base_path + ['interface', interface, 'egress', policy_name])
+        self.cli_set(base_path + ['policy', 'shaper-hfsc', policy_name])
+        self.cli_set(base_path + ['policy', 'shaper-hfsc', policy_name, 'bandwidth', '100mbit'])
+
+        # Default class with percent-based upperlimit/linkshare
+        self.cli_set(base_path + ['policy', 'shaper-hfsc', policy_name, 'default', 'upperlimit', 'm1', '50%'])
+        self.cli_set(base_path + ['policy', 'shaper-hfsc', policy_name, 'default', 'upperlimit', 'm2', '50%'])
+        self.cli_set(base_path + ['policy', 'shaper-hfsc', policy_name, 'default', 'upperlimit', 'd', '10'])
+        self.cli_set(base_path + ['policy', 'shaper-hfsc', policy_name, 'default', 'linkshare', 'm2', '60%'])
+
+        self.cli_commit()
+
+        output = cmd(f'tc -details class show dev {interface}').lower()
+        # 50% of 100mbit -> 50mbit, 60% -> 60mbit
+        self.assertIn('ul m1 50mbit d 10ms m2 50mbit', output)
+        self.assertIn('ls m1 0bit d 0us m2 60mbit', output)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2, failfast=VyOSUnitTestSHIM.TestCase.debug_on())
