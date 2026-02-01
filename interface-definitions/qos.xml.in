@@ -668,6 +668,12 @@
                   <leafNode name="queue-type">
                     <defaultValue>fq-codel</defaultValue>
                   </leafNode>
+                  <leafNode name="disable-policer">
+                    <properties>
+                      <help>Do not attach policer to this class (allows borrowing up to ceiling)</help>
+                      <valueless/>
+                    </properties>
+                  </leafNode>
                   #include <include/qos/set-dscp.xml.i>
                   #include <include/qos/target.xml.i>
                 </children>
@@ -733,6 +739,12 @@
                   #include <include/qos/queue-type.xml.i>
                   <leafNode name="queue-type">
                     <defaultValue>fq-codel</defaultValue>
+                  </leafNode>
+                  <leafNode name="disable-policer">
+                    <properties>
+                      <help>Do not attach policer to this default class (allows borrowing up to ceiling)</help>
+                      <valueless/>
+                    </properties>
                   </leafNode>
                   #include <include/qos/set-dscp.xml.i>
                   #include <include/qos/target.xml.i>

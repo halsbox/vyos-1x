@@ -249,6 +249,8 @@ class QoSBase:
                 if 'match' in cls_config:
                     has_filter = False
                     has_action_policy = any(tmp in ['exceed', 'bandwidth', 'burst'] for tmp in cls_config)
+                    disable_policer = 'disable_policer' in cls_config
+                    action_policy_enabled = has_action_policy and not disable_policer
                     max_index = len(cls_config['match'])
                     for index, (match, match_config) in enumerate(cls_config['match'].items(), start=1):
                         filter_cmd = filter_cmd_base
@@ -356,7 +358,7 @@ class QoSBase:
                                         elif af == 'ipv6':
                                             filter_cmd += f' match u8 {mask} {mask} at 53'
 
-                        if index != max_index or not has_action_policy:
+                        if index != max_index or not action_policy_enabled:
                             # avoid duplicate last match rule
                             cls = int(cls)
                             filter_cmd += f' flowid {self._parent:x}:{cls:x}'
@@ -365,7 +367,7 @@ class QoSBase:
                     vlan_expression = "match.*.vif"
                     match_vlan = jmespath.search(vlan_expression, cls_config)
 
-                    if has_action_policy and has_filter:
+                    if action_policy_enabled and has_filter:
                         # For "vif" "basic match" is used instead of "action police" T5961
                         if not match_vlan:
                             filter_cmd += f' action police'

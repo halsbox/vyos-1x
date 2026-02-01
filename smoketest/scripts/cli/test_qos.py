@@ -1325,5 +1325,23 @@ class TestQoS(VyOSUnitTestSHIM.TestCase):
                               get_tc_filter_details(interface))
 
 
+    def test_25_shaper_disable_policer(self):
+        interface = self._interfaces[0]
+        shaper_name = f'qos-shaper-{interface}'
+
+        self.cli_set(base_path + ['interface', interface, 'egress', shaper_name])
+        self.cli_set(base_path + ['policy', 'shaper', shaper_name, 'bandwidth', '100mbit'])
+        self.cli_set(base_path + ['policy', 'shaper', shaper_name, 'default', 'bandwidth', '80mbit'])
+        self.cli_set(base_path + ['policy', 'shaper', shaper_name, 'class', '10', 'bandwidth', '20mbit'])
+        self.cli_set(base_path + ['policy', 'shaper', shaper_name, 'class', '10', 'ceiling', '100mbit'])
+        self.cli_set(base_path + ['policy', 'shaper', shaper_name, 'class', '10', 'queue-type', 'fair-queue'])
+        self.cli_set(base_path + ['policy', 'shaper', shaper_name, 'class', '10', 'disable-policer'])
+        self.cli_set(base_path + ['policy', 'shaper', shaper_name, 'class', '10', 'match', 'ADDR', 'ip', 'source', 'address', '192.0.2.0/24'])
+
+        self.cli_commit()
+
+        filter_output = get_tc_filter_details(interface)
+        self.assertNotIn('police', filter_output)
+
 if __name__ == '__main__':
     unittest.main(verbosity=2, failfast=VyOSUnitTestSHIM.TestCase.debug_on())
