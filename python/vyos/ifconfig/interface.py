@@ -1655,14 +1655,30 @@ class Interface(Control):
 
         # Apply interface traffic redirection policy
         elif 'redirect' in self.config:
-            _, err = self._popen(f'tc qdisc add dev {source_if} handle ffff: ingress')
+            # Ensure an ingress qdisc exists (idempotent)
+            _, err = self._popen(f'tc qdisc replace dev {source_if} handle ffff: ingress')
             if err: print(f'tc qdisc add for redirect failed!')
 
             target_if = self.config['redirect']
-            _, err = self._popen(f'tc filter add dev {source_if} parent ffff: protocol '\
-                                 f'all prio 10 u32 match u32 0 0 flowid 1:1 action mirred '\
-                                 f'egress redirect dev {target_if}')
+            preserve_connmark = 'redirect_preserve_connmark' in self.config
+
+            # Clean existing prio 10 u32 filter to avoid duplicates
+            self._popen(f'tc filter del dev {source_if} parent ffff: pref 10 2>/dev/null')
+
+            action_chain = ''
+            if preserve_connmark:
+                action_chain += 'action connmark '
+            action_chain += f'action mirred egress redirect dev {target_if}'
+
+            _, err = self._popen(f'tc filter add dev {source_if} parent ffff: protocol '
+                                 f'all pref 10 u32 match u32 0 0 {action_chain}')
             if err: print('tc filter add for redirect failed')
+
+            if preserve_connmark:
+                # ensure we save skb->ct mark on egress so download restore works
+                self._popen(f'tc filter del dev {source_if} parent 1: pref 9 2>/dev/null')
+                self._popen(f'tc filter add dev {source_if} parent 1: protocol all pref 9 '
+                            f'u32 match u32 0 0 action connmark')
 
     def set_per_client_thread(self, enable):
         """

@@ -1536,6 +1536,19 @@ class TestFirewall(VyOSUnitTestSHIM.TestCase):
 
         self.verify_nftables(nftables_search, 'ip6 vyos_filter')
 
+    def test_preserve_mark_copy(self):
+        base_path = ['firewall', 'ipv4', 'forward', 'filter', 'rule']
+
+        self.cli_set(base_path + ['1', 'action', 'continue'])
+        self.cli_set(base_path + ['1', 'save-connection-mark'])
+
+        self.cli_commit()
+
+        nftables_search = [
+            ['ct mark set meta mark'],
+        ]
+        self.verify_nftables(nftables_search, 'ip vyos_filter')
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2, failfast=VyOSUnitTestSHIM.TestCase.debug_on())

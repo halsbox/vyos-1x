@@ -12,6 +12,7 @@
 #include <include/firewall/log-options.xml.i>
 #include <include/firewall/firewall-mark.xml.i>
 #include <include/firewall/packet-options.xml.i>
+#include <include/firewall/preserve-marks.xml.i>
 #include <include/firewall/protocol.xml.i>
 #include <include/firewall/nft-queue.xml.i>
 #include <include/firewall/recent.xml.i>

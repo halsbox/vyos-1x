@@ -117,6 +117,8 @@ def parse_rule(rule_conf, hook, fw_name, rule_id, ip_name):
         def_suffix = ''
         family = 'bri' if ip_name == 'bri' else 'ipv4'
 
+    save_conn_mark = 'save_connection_mark' in rule_conf
+
     if 'state' in rule_conf and rule_conf['state']:
         states = ",".join([s for s in rule_conf['state']])
 
@@ -602,6 +604,9 @@ def parse_rule(rule_conf, hook, fw_name, rule_id, ip_name):
         if 'hop_limit' in rule_conf['set']:
             hoplimit = rule_conf['set']['hop_limit']
             output.append(f'ip6 hoplimit set {hoplimit}')
+
+    if save_conn_mark:
+        output.append('ct mark set meta mark')
 
     if 'action' in rule_conf:
         if rule_conf['action'] == 'offload':

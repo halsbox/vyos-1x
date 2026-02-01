@@ -14,4 +14,10 @@
     </constraint>
   </properties>
 </leafNode>
+<leafNode name="redirect-preserve-connmark">
+  <properties>
+    <help>Restore conntrack mark before redirect (tc action connmark)</help>
+    <valueless/>
+  </properties>
+</leafNode>
 <!-- include end -->
