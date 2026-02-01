@@ -84,9 +84,10 @@ class TrafficShaper(QoSBase):
                     rate = self._rate_convert(cls_config['bandwidth'])
 
                 burst = cls_config['burst']
+                cburst = cls_config.get('ceil_burst', burst)
                 quantum = cls_config['codel_quantum']
 
-                tmp = f'tc class replace dev {self._interface} parent {self._parent:x}:1 classid {self._parent:x}:{cls:x} htb rate {rate} burst {burst} quantum {quantum}'
+                tmp = f'tc class replace dev {self._interface} parent {self._parent:x}:1 classid {self._parent:x}:{cls:x} htb rate {rate} burst {burst} cburst {cburst} quantum {quantum}'
                 if 'priority' in cls_config:
                     priority = cls_config['priority']
                     tmp += f' prio {priority}'
@@ -106,8 +107,9 @@ class TrafficShaper(QoSBase):
                 else:
                     rate = self._rate_convert(config['default']['bandwidth'])
                 burst = config['default']['burst']
+                cburst = config['default'].get('ceil_burst', burst)
                 quantum = config['default']['codel_quantum']
-                tmp = f'tc class replace dev {self._interface} parent {self._parent:x}:1 classid {self._parent:x}:{default_minor_id:x} htb rate {rate} burst {burst} quantum {quantum}'
+                tmp = f'tc class replace dev {self._interface} parent {self._parent:x}:1 classid {self._parent:x}:{default_minor_id:x} htb rate {rate} burst {burst} cburst {cburst} quantum {quantum}'
                 if 'priority' in config['default']:
                     priority = config['default']['priority']
                     tmp += f' prio {priority}'

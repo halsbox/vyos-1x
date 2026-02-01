@@ -663,6 +663,7 @@
                   #include <include/qos/queue-maximum-threshold.xml.i>
                   #include <include/qos/queue-minimum-threshold.xml.i>
                   #include <include/qos/queue-mark-probability.xml.i>
+                  #include <include/qos/ceil-burst.xml.i>
                   #include <include/qos/queue-limit-1-4294967295.xml.i>
                   #include <include/qos/queue-type.xml.i>
                   <leafNode name="queue-type">
@@ -729,6 +730,7 @@
                   #include <include/qos/queue-maximum-threshold.xml.i>
                   #include <include/qos/queue-minimum-threshold.xml.i>
                   #include <include/qos/queue-mark-probability.xml.i>
+                  #include <include/qos/ceil-burst.xml.i>
                   #include <include/qos/queue-limit-1-4294967295.xml.i>
                   #include <include/qos/queue-type.xml.i>
                   <leafNode name="queue-type">
