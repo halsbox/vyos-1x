@@ -24,6 +24,17 @@ from vyos.utils.file import read_file
 
 from vyos.utils.network import get_protocol_by_name
 
+CAKE_FLOW_ISOLATION_MAP = {
+    'blind': 'flowblind',
+    'src-host': 'srchost',
+    'dst-host': 'dsthost',
+    'dual-dst-host': 'dual-dsthost',
+    'dual-src-host': 'dual-srchost',
+    'triple-isolate': 'triple-isolate',
+    'flow': 'flows',
+    'host': 'hosts',
+}
+
 
 class QoSBase:
     _debug = False
@@ -158,6 +169,49 @@ class QoSBase:
             if tmp: default_tc += f' target {tmp}ms'
 
             default_tc += f' noecn'
+
+            self._cmd(default_tc)
+
+        elif queue_type == 'cake':
+            cake_config = dict_search('cake', config) or {}
+            mode = cake_config.get('mode') or 'besteffort'
+            default_tc += f' cake {mode}'
+
+            tmp = cake_config.get('bandwidth')
+            if tmp:
+                if isinstance(tmp, str) and tmp.endswith('%'):
+                    base_rate = config.get('_tc_ceil') or config.get('_tc_rate')
+                    if base_rate:
+                        percent = int(tmp.rstrip('%'))
+                        default_tc += f' bandwidth {base_rate * percent // 100}'
+                    else:
+                        default_tc += f' bandwidth {self._rate_convert(tmp)}'
+                else:
+                    default_tc += f' bandwidth {self._rate_convert(tmp)}'
+
+            tmp = cake_config.get('rtt')
+            if tmp:
+                default_tc += f' rtt {tmp}ms'
+
+            flow_isolation = cake_config.get('flow_isolation')
+            if flow_isolation:
+                isolation_value = CAKE_FLOW_ISOLATION_MAP.get(flow_isolation)
+                if isolation_value is None:
+                    raise ValueError(
+                        f'Invalid flow isolation parameter: {flow_isolation}'
+                    )
+                default_tc += f' {isolation_value}'
+
+            if 'ack_filter' in cake_config:
+                if 'aggressive' in cake_config['ack_filter']:
+                    default_tc += ' ack-filter-aggressive'
+                else:
+                    default_tc += ' ack-filter'
+            else:
+                default_tc += ' no-ack-filter'
+
+            default_tc += ' nat' if 'flow_isolation_nat' in cake_config else ' nonat'
+            default_tc += ' no-split-gso' if 'no_split_gso' in cake_config else ' split-gso'
 
             self._cmd(default_tc)
 

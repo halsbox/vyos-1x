@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.  If not, see <http://www.gnu.org/licenses/>.
 
-from vyos.qos.base import QoSBase
+from vyos.qos.base import QoSBase, CAKE_FLOW_ISOLATION_MAP
 
 
 class CAKE(QoSBase):
@@ -23,16 +23,7 @@ class CAKE(QoSBase):
 
     _direction = ['egress']
 
-    flow_isolation_map = {
-        'blind': 'flowblind',
-        'src-host': 'srchost',
-        'dst-host': 'dsthost',
-        'dual-dst-host': 'dual-dsthost',
-        'dual-src-host': 'dual-srchost',
-        'triple-isolate': 'triple-isolate',
-        'flow': 'flows',
-        'host': 'hosts',
-    }
+    flow_isolation_map = CAKE_FLOW_ISOLATION_MAP
 
     def update(self, config, direction):
         tmp = f'tc qdisc add dev {self._interface} root handle 1: cake {direction}'

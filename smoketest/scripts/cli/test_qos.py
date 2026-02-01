@@ -1324,6 +1324,37 @@ class TestQoS(VyOSUnitTestSHIM.TestCase):
                 self.assertIn(f'filter parent 1: protocol {proto} pref',
                               get_tc_filter_details(interface))
 
+    def test_25_shaper_cake_child_queue(self):
+        interface = self._interfaces[0]
+        policy_name = f'qos-shaper-{interface}'
+        class_id = '2'
+        rtt = 132
+
+        self.cli_set(base_path + ['interface', interface, 'egress', policy_name])
+        self.cli_set(base_path + ['policy', 'shaper', policy_name, 'bandwidth', '100mbit'])
+        self.cli_set(base_path + ['policy', 'shaper', policy_name, 'default', 'bandwidth', '50mbit'])
+        self.cli_set(base_path + ['policy', 'shaper', policy_name, 'class', class_id, 'bandwidth', '30mbit'])
+        self.cli_set(base_path + ['policy', 'shaper', policy_name, 'class', class_id, 'queue-type', 'cake'])
+        cake_base = base_path + ['policy', 'shaper', policy_name, 'class', class_id, 'cake']
+        self.cli_set(cake_base + ['mode', 'diffserv'])
+        self.cli_set(cake_base + ['bandwidth', '40mbit'])
+        self.cli_set(cake_base + ['rtt', str(rtt)])
+        self.cli_set(cake_base + ['flow-isolation', 'dual-src-host'])
+        self.cli_set(cake_base + ['flow-isolation-nat'])
+        self.cli_set(cake_base + ['no-split-gso'])
+        self.cli_set(cake_base + ['ack-filter', 'aggressive'])
+
+        self.cli_commit()
+
+        tc_qdiscs = get_tc_qdisc_json(interface, all=True)
+        cake_qdisc = next((item for item in tc_qdiscs if item.get('kind') == 'cake'), None)
+        self.assertIsNotNone(cake_qdisc)
+        self.assertEqual('dual-srchost', cake_qdisc['options']['flowmode'])
+        self.assertTrue(cake_qdisc['options']['nat'])
+        self.assertFalse(cake_qdisc['options']['split_gso'])
+        self.assertEqual('aggressive', cake_qdisc['options']['ack-filter'])
+        self.assertEqual(rtt * 1000, cake_qdisc['options']['rtt'])
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2, failfast=VyOSUnitTestSHIM.TestCase.debug_on())

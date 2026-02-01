@@ -3,7 +3,7 @@
   <properties>
     <help>Queue type for default traffic</help>
     <completionHelp>
-      <list>drop-tail fair-queue fq-codel priority random-detect</list>
+      <list>drop-tail fair-queue fq-codel priority random-detect cake</list>
     </completionHelp>
     <valueHelp>
       <format>drop-tail</format>
@@ -18,6 +18,10 @@
       <description>Fair Queue Codel</description>
     </valueHelp>
     <valueHelp>
+      <format>cake</format>
+      <description>Common Applications Kept Enhanced queue</description>
+    </valueHelp>
+    <valueHelp>
       <format>priority</format>
       <description>Priority queuing</description>
     </valueHelp>
@@ -26,7 +30,7 @@
       <description>Random Early Detection (RED)</description>
     </valueHelp>
     <constraint>
-      <regex>(drop-tail|fair-queue|fq-codel|priority|random-detect)</regex>
+      <regex>(drop-tail|fair-queue|fq-codel|priority|random-detect|cake)</regex>
     </constraint>
   </properties>
 </leafNode>
