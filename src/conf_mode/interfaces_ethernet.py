@@ -37,6 +37,7 @@ from vyos.configverify import verify_vrf
 from vyos.configverify import verify_bond_bridge_member
 from vyos.configverify import verify_eapol
 from vyos.ethtool import Ethtool
+from vyos.netlink import coalesce
 from vyos.frrender import FRRender
 from vyos.frrender import get_frrender_dict
 from vyos.ifconfig import EthernetIf
@@ -256,6 +257,26 @@ def verify_ring_buffer(ethernet: dict, ethtool: Ethtool):
                               f'size of "{max_tx}" bytes!')
 
 
+def verify_coalesce(ethernet: dict, ethtool: Ethtool):
+    """
+    Verify coalesce settings
+    :param ethernet: dictionary which is received from get_interface_dict
+    :type ethernet: dict
+    :param ethtool: Ethernet object
+    :type ethtool: Ethtool
+    """
+    if 'interrupt_coalescing' in ethernet:
+        if not ethtool.check_coalesce():
+            raise ConfigError('Driver does not fully support coalesce configuration!')
+
+        for param in coalesce.get_all_params():
+            if param in ethernet['interrupt_coalescing']:
+                if not ethtool.check_coalesce(param):
+                    param_name = param.replace('_', '-')
+                    msg = f'Driver does not support "{param_name}" coalesce setting!'
+                    raise ConfigError(msg)
+
+
 def verify_offload(ethernet: dict, ethtool: Ethtool):
     """
      Verify offloading capabilities
@@ -398,6 +419,7 @@ def verify(ethernet):
     verify_ring_buffer(ethernet, ethtool)
     verify_offload(ethernet, ethtool)
     verify_mac_change(ethernet, ethtool)
+    verify_coalesce(ethernet, ethtool)
 
     if 'is_bond_member' in ethernet:
         verify_bond_member(ethernet, ethtool)
@@ -457,6 +479,14 @@ def apply(ethernet):
             vpp_api.enable_dhcp_client(ifname)
         else:
             vpp_api.disable_dhcp_client(ifname)
+
+        # Enable ip6-icmp-ra-punt feature for DHCPv6-configured interfaces.
+        if 'dhcpv6' in ethernet.get('address', []) or (
+            'autoconf' in ethernet.get('ipv6', {}).get('address', {})
+        ):
+            vpp_api.enable_icmpv6_ra_punt(ifname)
+        else:
+            vpp_api.disable_icmpv6_ra_punt(ifname)
 
         # If the interface is managed by the VPP DPDK driver, synchronize runtime
         # parameters between Linux and the corresponding VPP LCP interface
